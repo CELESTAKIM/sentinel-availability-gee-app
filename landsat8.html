@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Landsat 8 Cloud-Free Kenya (2013–2025)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    html,body,#map { height: 100%; margin: 0; padding: 0; }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.96);
+      padding: 12px;
+      border-radius: 12px;
+      font-family: system-ui, sans-serif;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      z-index: 1000;
+      width: 340px;
+    }
+    #yearLabel { font-weight: 700; font-size: 16px; margin-bottom: 8px; display: block; }
+    #urlBox {
+      font-size: 11px; margin-top: 6px; word-break: break-all;
+      background: #f8f8f8; padding: 6px; border-radius: 6px;
+      max-height: 70px; overflow-y: auto;
+    }
+    #controls input[type="range"] { width: 100%; }
+
+    #buttons {
+      margin-top: 8px; display: flex; justify-content: space-between;
+    }
+    button {
+      background: #1e88e5; color: white; border: none; border-radius: 6px;
+      padding: 6px 10px; cursor: pointer; font-size: 13px;
+      transition: background 0.2s;
+    }
+    button:hover { background: #1565c0; }
+
+    #zoomBox {
+      position: absolute; bottom: 70px; right: 10px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 4px; padding: 6px 10px;
+      font-family: system-ui, sans-serif; font-size: 13px;
+      z-index: 1000; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    footer {
+      position: absolute; bottom: 0; width: 100%;
+      background: #f1f1f1; color: #222;
+      font-family: system-ui, sans-serif; font-size: 13px;
+      text-align: center; padding: 8px 10px;
+      border-top: 1px solid #ccc; z-index: 999;
+    }
+    footer a { color: #0066cc; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="controls">
+  <span id="yearLabel">Year: <span id="yearVal">2025</span></span>
+  <input id="yearSlider" type="range" min="2013" max="2025" step="1" value="2025"/>
+  <div id="urlBox"></div>
+
+  <div id="buttons">
+    <button onclick="window.location.href='index.html'">Open Index</button>
+    <button onclick="window.location.href='index1.html'">Open Index1</button>
+  </div>
+</div>
+
+<div id="zoomBox">Zoom: <span id="zoomVal">6</span></div>
+
+<footer>
+  Landsat 8 Cloud-Free Imagery (2013–2025) • Processed via <b>Google Earth Engine</b> |
+  Developed by <b>CELESTAKIM018@GMAIL.COM</b><br>
+  Data © <a href="https://landsat.gsfc.nasa.gov" target="_blank">USGS/NASA</a> &nbsp;|&nbsp;
+  Terms: For educational and non-commercial use only.
+</footer>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  const yearTiles = {
+    2013: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/fe143f051f25c4914f65d2eb16d3aad2-3ed6aef84efb9f62d379adb24bfdc096/tiles/{z}/{x}/{y}",
+    2014: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/6d664011a28b449594a4a6cba187d90c-5d3361a97b1cc5dca26aa1bab6a01077/tiles/{z}/{x}/{y}",
+    2015: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/fd51b25574c583e44431667cb577d537-978e96b39c3bd12dfd111e1bd3eda594/tiles/{z}/{x}/{y}",
+    2016: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/756e11c97bd64fb1268f91a48a4e2515-5d4138f0fbbb5b137f15131551a93eae/tiles/{z}/{x}/{y}",
+    2017: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/692f44140955db346d1dcce7fed1aef1-3895f47735e9fc5aebe26d1df8384e10/tiles/{z}/{x}/{y}",
+    2018: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/5156692c1e5f6068a75481971a6cdaa5-17061d6e99529393edea556937a1417e/tiles/{z}/{x}/{y}",
+    2019: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/a9652b4c0d325d7827248f35d382346f-f71f33dbfd7e1ed013f581bced9a6304/tiles/{z}/{x}/{y}",
+    2020: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/c081ec10441f7997b2d05d34034368f2-607b98700d5ecb26e6359e52c3188f21/tiles/{z}/{x}/{y}",
+    2021: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/63e602b14e3ac9d5504be0c54bbf29bf-2c986ea2d5b6e8f363171128aa103c4e/tiles/{z}/{x}/{y}",
+    2022: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/acf564b9c6d136641ad3580ebecd1214-a48576eb4ce27d8a146baa5f9a0e4f2c/tiles/{z}/{x}/{y}",
+    2023: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/dd501610068603c274aade38e6ff42b6-e5cc0ff6c9f7e80f9fdfeefa12f789c9/tiles/{z}/{x}/{y}",
+    2024: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/926942f8073995d59d0426314d999274-Oc913c433e6f7d3e7f82e3d0a0faaf0e/tiles/{z}/{x}/{y}",
+    2025: "https://earthengine.googleapis.com/v1/projects/ee-celestakim019/maps/9ab3adafaca8cce131d90fcad1e43dea-e19d4b02082ede7b35aff77b11e7bf9e/tiles/{z}/{x}/{y}"
+  };
+
+  const map = L.map('map').setView([0.2, 37.9], 6);
+  const tileLayers = {};
+  Object.keys(yearTiles).forEach(y => {
+    tileLayers[y] = L.tileLayer(yearTiles[y], { maxZoom: 13, attribution: 'Landsat 8 © USGS/NASA via GEE' });
+  });
+
+  let currentYear = 2025;
+  tileLayers[currentYear].addTo(map);
+
+  const slider = document.getElementById('yearSlider');
+  const yearVal = document.getElementById('yearVal');
+  const urlBox = document.getElementById('urlBox');
+  const zoomVal = document.getElementById('zoomVal');
+
+  function setYear(y) {
+    y = parseInt(y);
+    if (y === currentYear) return;
+    map.removeLayer(tileLayers[currentYear]);
+    tileLayers[y].addTo(map);
+    currentYear = y;
+    yearVal.textContent = y;
+    slider.value = y;
+    urlBox.textContent = yearTiles[y];
+  }
+
+  slider.addEventListener('input', e => setYear(e.target.value));
+  urlBox.textContent = yearTiles[currentYear];
+  map.on('zoomend', () => zoomVal.textContent = map.getZoom());
+</script>
+</body>
+</html>
